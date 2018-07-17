@@ -340,12 +340,7 @@ static int bls_cmp(const void *p0, const void *p1, void *state UNUSED)
   v0 = bls_get_val(e0, "version", NULL);
   v1 = bls_get_val(e1, "version", NULL);
 
-  if (v0 && !v1)
-    return -1;
-  if (!v0 && v1)
-    return 1;
-
-  if ((r = vercmp(v0, v1)) != 0)
+  if (v0 && v1 && (r = vercmp(v0, v1)) != 0)
     return r;
 
   return vercmp(e0->filename, e1->filename);
