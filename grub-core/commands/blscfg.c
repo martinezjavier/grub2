@@ -687,12 +687,11 @@ static char **early_initrd_list (const char *initrd)
   return list;
 }
 
-static void create_entry (struct bls_entry *entry)
+static void create_entry (struct bls_entry *entry, const char *title)
 {
   int argc = 0;
   const char **argv = NULL;
 
-  char *title = NULL;
   char *clinux = NULL;
   char *options = NULL;
   char **initrds = NULL;
@@ -730,7 +729,9 @@ static void create_entry (struct bls_entry *entry)
   if (dotconf)
     dotconf[0] = '\0';
 
-  title = bls_get_val (entry, "title", NULL);
+  if (!title)
+    title = bls_get_val (entry, "title", NULL);
+
   options = expand_val (bls_get_val (entry, "options", NULL));
   initrds = bls_make_list (entry, "initrd", NULL);
 
@@ -985,8 +986,12 @@ is_default_entry(const char *def_entry, struct bls_entry *entry, int idx)
   const char *title;
   int def_idx;
 
-  if (!def_entry)
-    return false;
+  if (!def_entry || def_entry[0] == '\0') {
+    if (idx == 0)
+      return true;
+    else
+      return false;
+  }
 
   if (grub_strcmp(def_entry, entry->filename) == 0)
     return true;
@@ -1006,11 +1011,59 @@ is_default_entry(const char *def_entry, struct bls_entry *entry, int idx)
   return false;
 }
 
+char *get_simple_title(struct bls_entry *entry)
+{
+  int len = 0;
+  char *start;
+  char *end;
+  char *title;
+  char *simple_title = NULL;
+
+  title = bls_get_val (entry, "title", NULL);
+
+  if (!title)
+    goto err;
+
+  simple_title = grub_malloc (grub_strlen(title));
+
+  if (!simple_title)
+    goto err;
+
+  end = grub_strchr(title, '(');
+
+  if (!end)
+    goto err;
+
+  len = end - title - 1;
+  grub_strncpy(simple_title, title, len);
+
+  start = grub_strchr(title, ')');
+
+  if (!start)
+    goto err;
+
+  end = grub_strrchr(title, '(');
+
+  if (!end)
+    goto err;
+
+  grub_strncpy(simple_title + len, start + 1, end - start - 1);
+  simple_title[len + end - start - 1] = '\0';
+
+  return simple_title;
+
+err:
+  grub_free(simple_title);
+  return NULL;
+}
+
 static grub_err_t
-bls_create_entries (bool show_default, bool show_non_default, char *entry_id)
+bls_create_entries(bool only_default, bool only_non_default, char *entry_id)
 {
   const char *def_entry = NULL;
   struct bls_entry *entry = NULL;
+  bool is_default = false;
+  char *title = NULL;
   int idx = 0;
 
   def_entry = grub_env_get("default");
@@ -1022,12 +1075,18 @@ bls_create_entries (bool show_default, bool show_non_default, char *entry_id)
       continue;
     }
 
-    if ((show_default && is_default_entry(def_entry, entry, idx)) ||
-	(show_non_default && !is_default_entry(def_entry, entry, idx)) ||
-	(entry_id && grub_strcmp(entry_id, entry->filename) == 0)) {
-      create_entry(entry);
-      entry->visible = 1;
-    }
+    is_default = is_default_entry(def_entry, entry, idx);
+
+    if ((only_default && !is_default) ||
+	(only_non_default && is_default) ||
+	(entry_id && grub_strcmp(entry_id, entry->filename) != 0))
+      continue;
+
+    if (only_default)
+      title = get_simple_title(entry);
+
+    create_entry(entry, title);
+    entry->visible = 1;
     idx++;
   }
 
@@ -1041,28 +1100,25 @@ grub_cmd_blscfg (grub_extcmd_context_t ctxt UNUSED,
   grub_err_t r;
   char *path = NULL;
   char *entry_id = NULL;
-  bool show_default = true;
-  bool show_non_default = true;
+  bool only_default = false;
+  bool only_non_default = false;
 
   if (argc == 1) {
-    if (grub_strcmp (args[0], "default") == 0) {
-      show_non_default = false;
-    } else if (grub_strcmp (args[0], "non-default") == 0) {
-      show_default = false;
-    } else if (args[0][0] == '(') {
+    if (grub_strcmp (args[0], "default") == 0)
+      only_default = true;
+    else if (grub_strcmp (args[0], "non-default") == 0)
+      only_non_default = true;
+    else if (args[0][0] == '(')
       path = args[0];
-    } else {
+    else
       entry_id = args[0];
-      show_default = false;
-      show_non_default = false;
-    }
   }
 
   r = bls_load_entries(path);
   if (r)
     return r;
 
-  return bls_create_entries(show_default, show_non_default, entry_id);
+  return bls_create_entries(only_default, only_non_default, entry_id);
 }
 
 static grub_extcmd_t cmd;

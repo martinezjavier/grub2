@@ -157,13 +157,19 @@ linux_entry ()
 
     populate_header_warn
 
-    cat << EOF
-insmod blscfg
-blscfg
-if [ -s \$prefix/grubenv ]; then
-  load_env
-fi
+    echo "insmod blscfg"
+    if [ "x${GRUB_ENABLE_SIMPLE_MENU}" != "xtrue" ]; then
+       echo "blscfg"
+    else
+       echo "blscfg default"
+       if [ "x${GRUB_DISABLE_OS_PROBER}" = "xtrue" ]; then
+       cat << EOF
+submenu 'Advanced options for Fedora ' \$menuentry_id_option 'gnulinux-$version-$type-$boot_device_id' {
+    blscfg non-default
+}
 EOF
+	fi
+    fi
 
     if [ "x${GRUB_GRUBENV_UPDATE}" = "xyes" ]; then
         blsdir=$(make_system_path_relative_to_its_root "/boot/loader/entries")

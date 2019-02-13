@@ -266,7 +266,8 @@ export GRUB_DEFAULT \
   GRUB_DISABLE_SUBMENU \
   GRUB_DEFAULT_DTB \
   SUSE_BTRFS_SNAPSHOT_BOOTING \
-  GRUB_ENABLE_BLSCFG
+  GRUB_ENABLE_BLSCFG \
+  GRUB_ENABLE_SIMPLE_MENU
 
 if test "x${grub_cfg}" != "x"; then
   rm -f "${grub_cfg}.new"
