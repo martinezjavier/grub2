@@ -51,7 +51,7 @@ grub_linux_boot (void)
     //return grub_error (GRUB_ERR_BAD_ARGUMENT, N_("initrd required!"));
   }
 
-  grub_printf("%serforming 'kexec -l %s %s %s'\n",
+  grub_dprintf ("linux", "%serforming 'kexec -l %s %s %s'\n",
 	(kexecute) ? "P" : "Not p",
 	kernel_path, initrd_param, boot_cmdline);
 
@@ -68,7 +68,7 @@ grub_linux_boot (void)
   if (kexecute < 1)
     grub_fatal (N_("Use '"PACKAGE"-emu --kexec' to force a system restart."));
 
-  grub_printf("Performing 'systemctl kexec' (%s) ",
+  grub_dprintf ("linux", "Performing 'systemctl kexec' (%s) ",
 		(kexecute==1) ? "do-or-die" : "just-in-case");
   rc = grub_util_exec (systemctl);
 
@@ -78,7 +78,7 @@ grub_linux_boot (void)
   grub_error (rc, N_("Error trying to perform 'systemctl kexec'"));
 
   /* need to check read-only root before resetting hard!? */
-  grub_printf ("Performing 'kexec -e -x'");
+  grub_dprintf ("linux", "Performing 'kexec -e -x'");
   kexec[1] = "-e";
   kexec[2] = "-x";
   kexec[3] = NULL;
