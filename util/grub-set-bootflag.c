@@ -27,6 +27,7 @@
 #include <grub/types.h>
 #include <grub/err.h>
 #include <grub/lib/envblk.h> /* For GRUB_ENVBLK_DEFCFG define */
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -87,6 +88,7 @@ int main(int argc, char *argv[])
   fclose (f);
   if (ret != GRUBENV_SIZE)
     {
+      errno = EINVAL;
       perror ("Error reading from " GRUBENV);
       return 1;     
     }
