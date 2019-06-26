@@ -96,6 +96,53 @@ cat <<EOF
 EOF
 }
 
+if [ "x${GRUB_ENABLE_BLSCFG}" = "xtrue" ]; then
+  if [ x$dirname = x/ ]; then
+    if [ -z "${prepare_root_cache}" ]; then
+      prepare_grub_to_access_device ${GRUB_DEVICE}
+    fi
+  else
+    if [ -z "${prepare_boot_cache}" ]; then
+      prepare_grub_to_access_device ${GRUB_DEVICE_BOOT}
+    fi
+  fi
+
+  if [ -d /sys/firmware/efi ]; then
+      bootefi_device="`${grub_probe} --target=device /boot/efi/`"
+      prepare_grub_to_access_device ${bootefi_device} boot
+  else
+      boot_device="`${grub_probe} --target=device /boot/`"
+      prepare_grub_to_access_device ${boot_device} boot
+  fi
+
+  populate_header_warn
+
+  cat << EOF
+set default_kernelopts="root=${LINUX_ROOT_DEVICE} ro ${GRUB_CMDLINE_LINUX}"
+
+insmod blscfg
+blscfg
+EOF
+
+  if [ "x${GRUB_GRUBENV_UPDATE}" = "xyes" ]; then
+      blsdir="/boot/loader/entries"
+      [ -d "${blsdir}" ] && GRUB_BLS_FS="$(${grub_probe} --target=fs ${blsdir})"
+      if [ "x${GRUB_BLS_FS}" = "xbtrfs" ] || [ "x${GRUB_BLS_FS}" = "xzfs" ]; then
+          blsdir=$(make_system_path_relative_to_its_root "${blsdir}")
+          if [ "x${blsdir}" != "x/loader/entries" ] && [ "x${blsdir}" != "x/boot/loader/entries" ]; then
+              ${grub_editenv} - set blsdir="${blsdir}"
+          fi
+      fi
+
+      ${grub_editenv} - set kernelopts="root=${LINUX_ROOT_DEVICE} ro ${GRUB_CMDLINE_LINUX}"
+      if [ -n "${GRUB_EARLY_INITRD_LINUX_CUSTOM}" ]; then
+          ${grub_editenv} - set early_initrd="${GRUB_EARLY_INITRD_LINUX_CUSTOM}"
+      fi
+  fi
+
+  exit 0
+fi
+
 mktitle ()
 {
   local title_type
@@ -134,53 +181,6 @@ linux_entry ()
 
   if [ -z "$boot_device_id" ]; then
       boot_device_id="$(grub_get_device_id "${GRUB_DEVICE}")"
-  fi
-
-  if [ "x${GRUB_ENABLE_BLSCFG}" = "xtrue" ]; then
-    if [ x$dirname = x/ ]; then
-      if [ -z "${prepare_root_cache}" ]; then
-        prepare_grub_to_access_device ${GRUB_DEVICE}
-      fi
-    else
-      if [ -z "${prepare_boot_cache}" ]; then
-        prepare_grub_to_access_device ${GRUB_DEVICE_BOOT}
-      fi
-    fi
-
-    if [ -d /sys/firmware/efi ]; then
-        bootefi_device="`${grub_probe} --target=device /boot/efi/`"
-        prepare_grub_to_access_device ${bootefi_device} boot
-    else
-        boot_device="`${grub_probe} --target=device /boot/`"
-        prepare_grub_to_access_device ${boot_device} boot
-    fi
-
-    populate_header_warn
-
-    cat << EOF
-set default_kernelopts="root=${linux_root_device_thisversion} ro ${args}"
-
-insmod blscfg
-blscfg
-EOF
-
-    if [ "x${GRUB_GRUBENV_UPDATE}" = "xyes" ]; then
-        blsdir="/boot/loader/entries"
-        [ -d "${blsdir}" ] && GRUB_BLS_FS="$(${grub_probe} --target=fs ${blsdir})"
-        if [ "x${GRUB_BLS_FS}" = "xbtrfs" ] || [ "x${GRUB_BLS_FS}" = "xzfs" ]; then
-            blsdir=$(make_system_path_relative_to_its_root "${blsdir}")
-            if [ "x${blsdir}" != "x/loader/entries" ] && [ "x${blsdir}" != "x/boot/loader/entries" ]; then
-                ${grub_editenv} - set blsdir="${blsdir}"
-            fi
-        fi
-
-	${grub_editenv} - set kernelopts="root=${linux_root_device_thisversion} ro ${args}"
-	if [ -n "${GRUB_EARLY_INITRD_LINUX_CUSTOM}" ]; then
-	    ${grub_editenv} - set early_initrd="${GRUB_EARLY_INITRD_LINUX_CUSTOM}"
-	fi
-    fi
-
-    exit 0
   fi
 
   if [ x$type != xsimple ] ; then
@@ -291,9 +291,7 @@ submenu_indentation=""
 is_top_level=true
 while [ "x$list" != "x" ] ; do
   linux=`version_find_latest $list`
-  if [ "x${GRUB_ENABLE_BLSCFG}" != "xtrue" ]; then
-    gettext_printf "Found linux image: %s\n" "$linux" >&2
-  fi
+  gettext_printf "Found linux image: %s\n" "$linux" >&2
 
   basename=`basename $linux`
   dirname=`dirname $linux`
