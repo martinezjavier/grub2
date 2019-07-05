@@ -109,10 +109,10 @@ if [ "x${GRUB_ENABLE_BLSCFG}" = "xtrue" ]; then
 
   if [ -d /sys/firmware/efi ]; then
       bootefi_device="`${grub_probe} --target=device /boot/efi/`"
-      prepare_grub_to_access_device ${bootefi_device} boot
+      prepare_grub_to_access_device_with_variable boot ${bootefi_device}
   else
       boot_device="`${grub_probe} --target=device /boot/`"
-      prepare_grub_to_access_device ${boot_device} boot
+      prepare_grub_to_access_device_with_variable boot ${boot_device}
   fi
 
   populate_header_warn
