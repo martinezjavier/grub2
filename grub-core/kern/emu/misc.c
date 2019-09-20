@@ -143,7 +143,7 @@ void
 grub_exit (void)
 {
 #if defined (GRUB_KERNEL)
-  grub_reboot();
+  grub_reboot ();
 #endif
   exit (1);
 }
@@ -208,13 +208,13 @@ grub_util_load_image (const char *path, char *buf)
 }
 
 void
-grub_util_set_kexecute(void)
+grub_util_set_kexecute (void)
 {
   kexecute++;
 }
 
 int
-grub_util_get_kexecute(void)
+grub_util_get_kexecute (void)
 {
   return kexecute;
 }

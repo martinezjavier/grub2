@@ -40,31 +40,35 @@ grub_linux_boot (void)
   char *initrd_param;
   const char *kexec[] = { "kexec", "-l", kernel_path, boot_cmdline, NULL, NULL };
   const char *systemctl[] = { "systemctl", "kexec", NULL };
-  int kexecute = grub_util_get_kexecute();
+  int kexecute = grub_util_get_kexecute ();
 
-  if (initrd_path) {
-    initrd_param = grub_xasprintf("--initrd=%s", initrd_path);
-    kexec[3] = initrd_param;
-    kexec[4] = boot_cmdline;
-  } else {
-    initrd_param = grub_xasprintf("%s", "");
-    //return grub_error (GRUB_ERR_BAD_ARGUMENT, N_("initrd required!"));
-  }
+  if (initrd_path)
+    {
+      initrd_param = grub_xasprintf ("--initrd=%s", initrd_path);
+      kexec[3] = initrd_param;
+      kexec[4] = boot_cmdline;
+    }
+  else
+    {
+      initrd_param = grub_xasprintf ("%s", "");
+    }
 
   grub_dprintf ("linux", "%serforming 'kexec -l %s %s %s'\n",
-	(kexecute) ? "P" : "Not p",
-	kernel_path, initrd_param, boot_cmdline);
+                (kexecute) ? "P" : "Not p",
+                kernel_path, initrd_param, boot_cmdline);
 
   if (kexecute)
-    rc = grub_util_exec(kexec);
+    rc = grub_util_exec (kexec);
 
   grub_free(initrd_param);
 
-  if (rc != GRUB_ERR_NONE) {
-    grub_error (rc, N_("Error trying to perform kexec load operation."));
-    grub_sleep (3);
-    return rc;
-  }
+  if (rc != GRUB_ERR_NONE)
+    {
+      grub_error (rc, N_("Error trying to perform kexec load operation."));
+      grub_sleep (3);
+      return rc;
+    }
+
   if (kexecute < 1)
     grub_fatal (N_("Use '"PACKAGE"-emu --kexec' to force a system restart."));
 
@@ -82,7 +86,7 @@ grub_linux_boot (void)
   kexec[1] = "-e";
   kexec[2] = "-x";
   kexec[3] = NULL;
-  rc = grub_util_exec(kexec);
+  rc = grub_util_exec (kexec);
   if ( rc != GRUB_ERR_NONE )
     grub_fatal (N_("Error trying to directly perform 'kexec -e'."));
 
@@ -110,28 +114,30 @@ grub_cmd_linux (grub_command_t cmd __attribute__ ((unused)), int argc, char *arg
   if (argc == 0)
     return grub_error (GRUB_ERR_BAD_ARGUMENT, N_("filename expected"));
 
-  if ( !grub_util_is_regular(argv[0]) )
-    return grub_error(GRUB_ERR_FILE_NOT_FOUND, N_("Cannot find kernel file %s"), argv[0]);
+  if ( !grub_util_is_regular (argv[0]) )
+    return grub_error (GRUB_ERR_FILE_NOT_FOUND, N_("Cannot find kernel file %s"), argv[0]);
 
   if ( kernel_path != NULL )
-    grub_free(kernel_path);
+    grub_free (kernel_path);
 
-  kernel_path = grub_xasprintf("%s", argv[0]);
+  kernel_path = grub_xasprintf ("%s", argv[0]);
 
-  if ( boot_cmdline != NULL ) {
-    grub_free(boot_cmdline);
-    boot_cmdline = NULL;
-  }
+  if ( boot_cmdline != NULL )
+    {
+      grub_free(boot_cmdline);
+      boot_cmdline = NULL;
+    }
 
   if ( argc > 1 )
-  {
-    boot_cmdline = grub_xasprintf("--command-line=%s", argv[1]);
-    for ( i = 2; i < argc; i++ ) {
-      tempstr = grub_xasprintf("%s %s", boot_cmdline, argv[i]);
-      grub_free(boot_cmdline);
-      boot_cmdline = tempstr;
+    {
+      boot_cmdline = grub_xasprintf("--command-line=%s", argv[1]);
+      for ( i = 2; i < argc; i++ )
+        {
+          tempstr = grub_xasprintf("%s %s", boot_cmdline, argv[i]);
+          grub_free(boot_cmdline);
+          boot_cmdline = tempstr;
+        }
     }
-  }
 
   grub_loader_set (grub_linux_boot, grub_linux_unload, 0);
 
@@ -144,11 +150,11 @@ grub_cmd_initrd (grub_command_t cmd __attribute__ ((unused)), int argc, char *ar
   if (argc == 0)
     return grub_error (GRUB_ERR_BAD_ARGUMENT, N_("filename expected"));
 
-  if ( !grub_util_is_regular(argv[0]) )
-    return grub_error(GRUB_ERR_FILE_NOT_FOUND, N_("Cannot find initrd file %s"), argv[0]);
+  if ( !grub_util_is_regular (argv[0]) )
+    return grub_error (GRUB_ERR_FILE_NOT_FOUND, N_("Cannot find initrd file %s"), argv[0]);
 
   if ( initrd_path != NULL )
-    grub_free(initrd_path);
+    grub_free (initrd_path);
 
   initrd_path = grub_xasprintf("%s", argv[0]);
 
@@ -159,7 +165,7 @@ grub_cmd_initrd (grub_command_t cmd __attribute__ ((unused)), int argc, char *ar
 
 static grub_command_t cmd_linux, cmd_initrd;
 
-GRUB_MOD_INIT(linux)
+GRUB_MOD_INIT (linux)
 {
   cmd_linux = grub_register_command ("linux", grub_cmd_linux, 0, N_("Load Linux."));
   cmd_initrd = grub_register_command ("initrd", grub_cmd_initrd, 0, N_("Load initrd."));
@@ -169,7 +175,7 @@ GRUB_MOD_INIT(linux)
   boot_cmdline = NULL;
 }
 
-GRUB_MOD_FINI(linux)
+GRUB_MOD_FINI (linux)
 {
   grub_unregister_command (cmd_linux);
   grub_unregister_command (cmd_initrd);

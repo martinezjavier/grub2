@@ -166,7 +166,7 @@ argp_parser (int key, char *arg, struct argp_state *state)
       verbosity++;
       break;
     case 'X':
-      grub_util_set_kexecute();
+      grub_util_set_kexecute ();
       break;
 
     case ARGP_KEY_ARG:
