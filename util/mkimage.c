@@ -1331,17 +1331,17 @@ grub_install_generate_image (const char *dir, const char *prefix,
 	    sections = o64 + 1;
 	  }
 
-	PE_OHDR (o32, o64, code_size) = grub_host_to_target32 (layout.exec_size);
-	PE_OHDR (o32, o64, data_size) = grub_cpu_to_le32 (reloc_addr - layout.exec_size - header_size);
-	PE_OHDR (o32, o64, bss_size) = grub_host_to_target32 (layout.bss_size);
+	PE_OHDR (o32, o64, header_size) = grub_host_to_target32 (header_size);
+
 	PE_OHDR (o32, o64, entry_addr) = grub_host_to_target32 (layout.start_address);
-	PE_OHDR (o32, o64, code_base) = grub_host_to_target32 (header_size);
 
 	PE_OHDR (o32, o64, image_base) = 0;
+
+	PE_OHDR (o32, o64, image_size) = grub_host_to_target32 (pe_size);
+
 	PE_OHDR (o32, o64, section_alignment) = grub_host_to_target32 (image_target->section_align);
 	PE_OHDR (o32, o64, file_alignment) = grub_host_to_target32 (GRUB_PE32_FILE_ALIGNMENT);
-	PE_OHDR (o32, o64, image_size) = grub_host_to_target32 (pe_size);
-	PE_OHDR (o32, o64, header_size) = grub_host_to_target32 (header_size);
+
 	PE_OHDR (o32, o64, subsystem) = grub_host_to_target16 (GRUB_PE32_SUBSYSTEM_EFI_APPLICATION);
 
 	/* Do these really matter? */
@@ -1351,10 +1351,9 @@ grub_install_generate_image (const char *dir, const char *prefix,
 	PE_OHDR (o32, o64, heap_commit_size) = grub_host_to_target32 (0x10000);
 
 	PE_OHDR (o32, o64, num_data_directories) = grub_host_to_target32 (GRUB_PE32_NUM_DATA_DIRECTORIES);
-	PE_OHDR (o32, o64, base_relocation_table.rva) = grub_host_to_target32 (reloc_addr);
-	PE_OHDR (o32, o64, base_relocation_table.size) = grub_host_to_target32 (layout.reloc_size);
 
 	/* The sections.  */
+	PE_OHDR (o32, o64, code_size) = grub_host_to_target32 (layout.exec_size);
 	text_section = sections;
 	strcpy (text_section->name, ".text");
 	text_section->virtual_size = grub_cpu_to_le32 (layout.exec_size);
@@ -1366,6 +1365,7 @@ grub_install_generate_image (const char *dir, const char *prefix,
 						| GRUB_PE32_SCN_MEM_EXECUTE
 						| GRUB_PE32_SCN_MEM_READ);
 
+	PE_OHDR (o32, o64, data_size) = grub_cpu_to_le32 (reloc_addr - layout.exec_size - header_size);
 	data_section = text_section + 1;
 	strcpy (data_section->name, ".data");
 	data_section->virtual_size = grub_cpu_to_le32 (layout.kernel_size - layout.exec_size);
@@ -1387,6 +1387,9 @@ grub_install_generate_image (const char *dir, const char *prefix,
 	  = grub_cpu_to_le32_compile_time (GRUB_PE32_SCN_CNT_INITIALIZED_DATA
 			      | GRUB_PE32_SCN_MEM_READ
 			      | GRUB_PE32_SCN_MEM_WRITE);
+
+	PE_OHDR (o32, o64, base_relocation_table.rva) = grub_host_to_target32 (reloc_addr);
+	PE_OHDR (o32, o64, base_relocation_table.size) = grub_host_to_target32 (layout.reloc_size);
 
 	reloc_section = mods_section + 1;
 	strcpy (reloc_section->name, ".reloc");
