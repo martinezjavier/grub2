@@ -5748,6 +5748,7 @@ environment variables and commands are listed in the same order.
 * Authentication and authorisation:: Users and access control
 * Using digital signatures::         Booting digitally signed code
 * UEFI secure boot and shim::        Booting digitally signed PE files
+* Secure Boot Advanced Targeting::   Embedded information for generation number based revocation
 * Measured Boot::                    Measuring boot components
 @end menu
 
@@ -5919,6 +5920,25 @@ prohibited if the UEFI secure boot is enabled. This is done due to
 security reasons. All above mentioned requirements are enforced by the
 shim_lock module. And itself it is a persistent module which means that
 it cannot be unloaded if it was loaded into the memory.
+
+@node Secure Boot Advanced Targeting
+@section Embedded information for generation number based revocation
+
+The Secure Boot Advanced Targeting (SBAT) is a mechanism to allow the revocation
+of components in the boot path by using a generation numbers embedded in the EFI
+binaries. The SBAT metadata is located in a .sbat data section that has a set of
+UTF-8 strings as comma-separated values (CSV). See
+@uref{https://github.com/rhboot/shim/blob/sbat/SBAT.md} for more information.
+
+To add a data section containing the SBAT information into the binary, the
+@option{--sbat} option of @command{grub-mkimage} command should be used. The content
+of a CSV file (encoded using UTF-8 data) copied as is to a .sbat data section in the
+generated EFI binary. The CSV file can be stored anywhere on the file system.
+
+@example
+grub-mkimage -O x86_64-efi -o grubx64.efi -p /EFI/$EFIDIR  \
+                --sbat sbat.csv -d grub-core $GRUB_MODULES
+@end example
 
 @node Measured Boot
 @section Measuring boot components

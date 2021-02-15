@@ -863,12 +863,13 @@ grub_install_generate_image (const char *dir, const char *prefix,
 			     char *memdisk_path, char **pubkey_paths,
 			     size_t npubkeys, char *config_path,
 			     const struct grub_install_image_target_desc *image_target,
-			     int note, grub_compression_t comp, const char *dtb_path)
+			     int note, grub_compression_t comp, const char *dtb_path,
+			     const char *sbat_path)
 {
   char *kernel_img, *core_img;
   size_t total_module_size, core_size;
   size_t memdisk_size = 0, config_size = 0;
-  size_t prefix_size = 0, dtb_size = 0;
+  size_t prefix_size = 0, dtb_size = 0, sbat_size = 0;
   char *kernel_path;
   size_t offset;
   struct grub_util_path_list *path_list, *p;
@@ -1283,8 +1284,9 @@ grub_install_generate_image (const char *dir, const char *prefix,
       break;
     case IMAGE_EFI:
       {
-	char *pe_img, *header;
+	char *pe_img, *pe_sbat, *header;
 	struct grub_pe32_section_table *section;
+	size_t n_sections = 4;
 	size_t scn_size;
 	grub_uint32_t vma, raw_data;
 	size_t pe_size, header_size;
@@ -1299,8 +1301,21 @@ grub_install_generate_image (const char *dir, const char *prefix,
 	  header_size = EFI64_HEADER_SIZE;
 
 	vma = raw_data = header_size;
+
+	if (sbat_path != NULL)
+	  {
+	    if (image_target->id != IMAGE_EFI)
+	      grub_util_error (_("sbat section can only be embedded in EFI images"));
+
+	    sbat_size = ALIGN_ADDR (grub_util_get_image_size (sbat_path));
+	    sbat_size = ALIGN_UP (sbat_size, GRUB_PE32_FILE_ALIGNMENT);
+	  }
+
 	pe_size = ALIGN_UP (header_size + core_size, GRUB_PE32_FILE_ALIGNMENT) +
           ALIGN_UP (layout.reloc_size, GRUB_PE32_FILE_ALIGNMENT);
+	if (sbat_size)
+	  pe_size += sbat_size;
+
 	header = pe_img = xcalloc (1, pe_size);
 
 	memcpy (pe_img + raw_data, core_img, core_size);
@@ -1315,7 +1330,10 @@ grub_install_generate_image (const char *dir, const char *prefix,
 					      + GRUB_PE32_SIGNATURE_SIZE);
 	c->machine = grub_host_to_target16 (image_target->pe_target);
 
-	c->num_sections = grub_host_to_target16 (4);
+	if (sbat_path)
+	  n_sections += 1;
+
+	c->num_sections = grub_host_to_target16 (n_sections);
 	c->time = grub_host_to_target32 (STABLE_EMBEDDING_TIMESTAMP);
 	c->characteristics = grub_host_to_target16 (GRUB_PE32_EXECUTABLE_IMAGE
 						    | GRUB_PE32_LINE_NUMS_STRIPPED
@@ -1392,14 +1410,26 @@ grub_install_generate_image (const char *dir, const char *prefix,
                                    GRUB_PE32_SCN_MEM_READ |
                                    GRUB_PE32_SCN_MEM_WRITE);
 
-
-	scn_size = pe_size - layout.reloc_size - raw_data;
+	scn_size = pe_size - layout.reloc_size - sbat_size - raw_data;
 	section = init_pe_section (image_target, section, "mods",
 				   &vma, scn_size, image_target->section_align,
 				   &raw_data, scn_size,
 				   GRUB_PE32_SCN_CNT_INITIALIZED_DATA |
                                    GRUB_PE32_SCN_MEM_READ |
                                    GRUB_PE32_SCN_MEM_WRITE);
+
+	if (sbat_path)
+	  {
+	    pe_sbat = pe_img + raw_data;
+	    grub_util_load_image (sbat_path, pe_sbat);
+
+	    section = init_pe_section (image_target, section, ".sbat",
+                                       &vma, sbat_size,
+                                       image_target->section_align,
+                                       &raw_data, sbat_size,
+                                       GRUB_PE32_SCN_CNT_INITIALIZED_DATA |
+                                       GRUB_PE32_SCN_MEM_READ);
+	  }
 
 	scn_size = layout.reloc_size;
 	PE_OHDR (o32, o64, base_relocation_table.rva) = grub_host_to_target32 (vma);
